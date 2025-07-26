@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Solar Wind Archive｜太陽風記憶體</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: "Helvetica Neue", sans-serif;
+      }
+      #overlay {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        text-align: center;
+        z-index: 10;
+      }
+      #overlay h1 {
+        margin: 0 0 10px;
+        font-size: 1.5em;
+        color: #ffcc99;
+      }
+      #overlay p {
+        font-size: 0.9em;
+        color: #cccccc;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="overlay">
+      <h1>太陽風記憶體｜Solar Wind Archive</h1>
+      <p>🖼️ 請將你的圖像拖曳進畫面<br />在日冕風中，記憶將被釋放</p>
+    </div>
+
+    <script>
+      let img;
+      let particles = [];
+      let windStrength = 0.005;
+
+      function setup() {
+        createCanvas(windowWidth, windowHeight);
+        pixelDensity(1);
+        imageMode(CENTER);
+        background(0);
+        textAlign(CENTER);
+        textSize(16);
+        fill(255);
+        text("🖼️ 請將圖片拖入畫面中", width / 2, height / 2);
+        // 啟用拖曳圖片
+        dropZone = select("canvas");
+        dropZone.drop(gotFile);
+      }
+
+      function draw() {
+        background(0, 20);
+        for (let p of particles) {
+          p.update();
+          p.display();
+        }
+      }
+
+      function gotFile(file) {
+        if (file.type === "image") {
+          loadImage(file.data, (loaded) => {
+            img = loaded;
+            img.resize(200, 0);
+            img.loadPixels();
+            particles = [];
+            for (let y = 0; y < img.height; y += 2) {
+              for (let x = 0; x < img.width; x += 2) {
+                let index = (x + y * img.width) * 4;
+                let r = img.pixels[index];
+                let g = img.pixels[index + 1];
+                let b = img.pixels[index + 2];
+                let px = x + width / 2 - img.width / 2;
+                let py = y + height / 2 - img.height / 2;
+                particles.push(new Particle(px, py, color(r, g, b)));
+              }
+            }
+          });
+        }
+      }
+
+      class Particle {
+        constructor(x, y, col) {
+          this.pos = createVector(x, y);
+          this.vel = createVector(random(-0.05, 0.05), random(-0.05, 0.05));
+          this.acc = createVector(
+            random(-windStrength, windStrength),
+            random(-0.00001, 0.00001)
+          );
+          this.decay = random(0.0001, 0.0003);
+          this.color = col;
+          this.alpha = 255;
+          this.size = random(1.5, 3);
+        }
+
+        update() {
+          this.vel.add(this.acc);
+          this.pos.add(this.vel);
+          this.acc.mult(this.decay);
+          this.alpha -= 0.003;
+        }
+
+        display() {
+          noStroke();
+          fill(
+            red(this.color),
+            green(this.color),
+            blue(this.color),
+            this.alpha
+          );
+          ellipse(this.pos.x, this.pos.y, this.size);
+        }
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+    </script>
+  </body>
+</html>

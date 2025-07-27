@@ -249,7 +249,7 @@
       // 全域變數
       let particles = [];
       let attractors = [];
-      const NUM_ATTRACTORS = 16; // 9 個固定的塌陷點
+      const NUM_ATTRACTORS = 8; // 9 個固定的塌陷點
       let noiseScale = 0.5; // 噪聲縮放比例，控制太陽風的細膩度
       let repeller = null; // 滑鼠點擊產生的斥力點
 
@@ -279,8 +279,6 @@
         update() {
           this.vel.add(this.acc);
           this.vel.limit(this.maxSpeed);
-          this.angle += this.speed * random(0.7);
-
           // 確保 orbitingPlanet 索引有效且 attractors 陣列中存在該元素及其 pos 屬性
           if (
             this.orbitingPlanet >= 0 &&
@@ -289,6 +287,10 @@
             attractors[this.orbitingPlanet].pos &&
             random() > 0.03
           ) {
+            this.angle +=
+              this.speed *
+              attractors[this.orbitingPlanet].speedFactor *
+              random(0.1, 0.7);
             let radius =
               (this.orbitRadius * attractors[this.orbitingPlanet].size) / 100;
             let x =
@@ -364,6 +366,7 @@
             ),
             size: random(10, 200),
             reverse: random(1) > 0.5,
+            speedFactor: random(0.1, 1.2),
           };
           attractors.push(attractor);
         }

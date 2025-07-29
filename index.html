@@ -46,6 +46,7 @@
       let baseWind = 0.00005; // 基礎微風強度
       let windStrength = baseWind;
       let imgSize = 500;
+      let passCount = 0;
 
       let song; // 背景音樂
       let amp; // 振幅分析器
@@ -60,35 +61,60 @@
         pixelDensity(1);
         imageMode(CENTER);
         background(0);
-
         // 振幅分析器
         amp = new p5.Amplitude();
         amp.setInput(song);
 
         // 播放音樂
-        // song.loop();
-
-        textAlign(CENTER);
-        textSize(16);
-        fill(255);
-        text("🖼️ / 🎥 拖入圖片或影片\n背景音樂自動播放", width / 2, height / 2);
 
         gfx = createGraphics(imgSize, imgSize);
-
-        // 讓畫布支援拖放
         let dropZone = select("canvas");
         dropZone.drop(gotFile);
       }
 
+      function gotFile(file) {
+        img = vid = null;
+        particles = [];
+        userStartAudio().then(() => {
+          if (!song.isPlaying()) {
+            song.loop();
+          }
+        });
+
+        if (file.type === "video") {
+          vid = createVideo([file.data], () => {
+            vid.volume(1);
+            vid.hide();
+            // 先不要用 loop，改用 play + onended callback
+            vid.onended(() => {
+              passCount++;
+              // 重設粒子，以便第二遍有全新樣貌
+              // particles = [];
+              // 第二遍開始：啟動 loop
+              vid.play();
+            });
+            vid.play();
+            // 調整 gfx 大小
+            let w = vid.width,
+              h = vid.height;
+            if (w > h) {
+              vid.size(imgSize, (h * imgSize) / w);
+            } else {
+              vid.size((w * imgSize) / h, imgSize);
+            }
+            gfx.resizeCanvas(vid.width, vid.height);
+          });
+        }
+      }
+
       function draw() {
         background(0, 20);
-
-        // 透過振幅取得音量強度
-        let level = amp.getLevel(); // 0.0 ~ 1.0
-        // 將音量對映到風強度範圍
-        windStrength = map(level, 0, 0.3, baseWind, 0.001, true);
-
-        // 把影像畫到內部 gfx，再抓像素
+        if (passCount >= 1) {
+          // 透過振幅取得音量強度
+          let level = amp.getLevel(); // 0.0 ~ 1.0
+          // 將音量對映到風強度範圍
+          windStrength = map(level, 0, 0.3, baseWind, 0.001 * passCount, true);
+        }
         if (img || (vid && vid.loadedmetadata)) {
           gfx.clear();
           if (img) {
@@ -115,103 +141,93 @@
               );
               if (particles[idx]) {
                 particles[idx].color = c;
-                particles[idx].resetWind(); // 更新每個粒子的風向／強度
+                // 第二遍（passCount >=1）才用太陽風; 第一遍風力設為極小
+                particles[idx].resetWind(
+                  passCount >= 1 ? windStrength : 0.0012
+                );
               } else {
                 let px = x + width / 2 - gfx.width / 2;
                 let py = y + height / 2 - gfx.height / 2;
-                particles.push(new Particle(px, py, c));
+                particles.push(
+                  new Particle(
+                    px,
+                    py,
+                    c,
+                    passCount >= 1 ? windStrength : 0.0001
+                  )
+                );
               }
               idx++;
             }
           }
-          // 刪除多餘粒子
           particles.splice(idx);
         }
 
-        // 更新與繪製
         for (let p of particles) {
           p.update();
           p.display();
         }
-
-        // （選用）顯示目前音量與風強度
-        noStroke();
-        fill(255);
-        text(
-          `Level: ${level.toFixed(3)}  Wind: ${windStrength.toFixed(3)}`,
-          120,
-          20
-        );
-      }
-
-      function gotFile(file) {
-        img = vid = null;
-        particles = [];
-        userStartAudio().then(() => {
-          if (!song.isPlaying()) {
-            song.loop();
-          }
-        });
-
-        if (file.type === "image") {
-          loadImage(file.data, (loaded) => {
-            img = loaded;
-            img.resize(imgSize, 0);
-          });
-        } else if (file.type === "video") {
-          vid = createVideo([file.data], () => {
-            vid.loop();
-            vid.volume(1);
-            vid.hide();
-            // 調整 gfx 尺寸
-            let w = vid.width,
-              h = vid.height;
-            if (w > h) {
-              vid.size(imgSize, (h * imgSize) / w);
-            } else {
-              vid.size((w * imgSize) / h, imgSize);
-            }
-            gfx.resizeCanvas(vid.width, vid.height);
-          });
-        }
       }
 
       class Particle {
-        constructor(x, y, col) {
+        constructor(x, y, col, w) {
           this.pos = createVector(x, y);
           this.vel = createVector(random(-0.05, 0.05), random(-0.05, 0.05));
-          this.initCol = col;
           this.color = col;
           this.alpha = 255;
           this.size = random(1.5, 3);
-          this.resetWind();
           this.decay = random(0.0001, 0.0003);
+          this.resetWind(w);
         }
 
-        // 根據全局 windStrength 重新產生加速度向量
-        resetWind() {
+        resetWind(strength) {
+          // 利用 noise 決定方向，再乘以傳入 strength
           let angle =
             noise(this.pos.x * 0.005, this.pos.y * 0.005, frameCount * 0.005) *
             TWO_PI *
             2;
-          this.acc = p5.Vector.fromAngle(angle).mult(windStrength);
+          this.acc = p5.Vector.fromAngle(angle).mult(strength);
         }
 
         update() {
           this.vel.add(this.acc);
           this.pos.add(this.vel);
           this.acc.mult(this.decay);
-          this.alpha -= 0.003;
+          this.alpha -= 0.03;
         }
 
         display() {
           noStroke();
-          fill(
-            red(this.color),
-            green(this.color),
-            blue(this.color),
-            this.alpha
-          );
+
+          if (passCount > 2) {
+            // 切到 HSB 模式方便調整色相
+            colorMode(HSB, 360, 100, 100, 255);
+            // 取出原始顏色的 H、S、B
+            let h = hue(this.color);
+            let s = saturation(this.color);
+            let b = brightness(this.color);
+
+            // 用 noise 產生 -30 ~ +30 度的 hue 偏移
+            let t = frameCount * 0.005; // 控制時間流速
+            let n = noise(this.pos.x * 0.01, this.pos.y * 0.01, t);
+            let shift = map(n, 0, 1, -45, 45);
+
+            // 計算新顏色並繪製
+            let dynamicColor = color((h + shift + 360) % 360, s, b, this.alpha);
+            fill(dynamicColor);
+
+            // 切回 RGB 模式，避免影響全域
+            colorMode(RGB, 255, 255, 255, 255);
+          } else {
+            // passCount <= 2 時保持原色
+            fill(
+              red(this.color),
+              green(this.color),
+              blue(this.color),
+              this.alpha
+            );
+          }
+
           ellipse(this.pos.x, this.pos.y, this.size);
         }
       }

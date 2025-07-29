@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <title>Solar Wind Archive｜太陽風記憶體</title>
     <script src="./p5.min.js"></script>
+    <script src="./p5.sound.js"></script>
     <style>
       html,
       body {
@@ -42,8 +43,8 @@
     <script>
       let img, vid, gfx;
       let particles = [];
-      let windStrength = 0.005;
-      let imgSize = 200;
+      let windStrength = 0.5;
+      let imgSize = 500;
 
       function setup() {
         createCanvas(windowWidth, windowHeight);
@@ -118,7 +119,7 @@
         if (file.type === "image") {
           loadImage(file.data, (loaded) => {
             img = loaded;
-            img.resize(200, 0);
+            img.resize(imgSize, 0);
           });
         } else if (file.type === "video") {
           vid = createVideo([file.data], () => {

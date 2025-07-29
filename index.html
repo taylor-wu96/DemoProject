@@ -43,33 +43,57 @@
     <script>
       let img, vid, gfx;
       let particles = [];
-      let windStrength = 0.5;
+      let baseWind = 0.00005; // 基礎微風強度
+      let windStrength = baseWind;
       let imgSize = 500;
+
+      let song; // 背景音樂
+      let amp; // 振幅分析器
+
+      function preload() {
+        // 載入背景音樂（放在專案同目錄或指定完整路徑）
+        song = loadSound("./sound.mp3");
+      }
 
       function setup() {
         createCanvas(windowWidth, windowHeight);
         pixelDensity(1);
         imageMode(CENTER);
         background(0);
+
+        // 振幅分析器
+        amp = new p5.Amplitude();
+        amp.setInput(song);
+
+        // 播放音樂
+        // song.loop();
+
         textAlign(CENTER);
         textSize(16);
         fill(255);
-        text("🖼️ / 🎥 請將圖片或影片拖入畫面中", width / 2, height / 2);
+        text("🖼️ / 🎥 拖入圖片或影片\n背景音樂自動播放", width / 2, height / 2);
 
         gfx = createGraphics(imgSize, imgSize);
-        dropZone = select("canvas");
+
+        // 讓畫布支援拖放
+        let dropZone = select("canvas");
         dropZone.drop(gotFile);
       }
 
       function draw() {
         background(0, 20);
 
-        // 先把當前影像（img 或 vid）畫到 gfx，再 loadPixels
-        if (img || vid) {
+        // 透過振幅取得音量強度
+        let level = amp.getLevel(); // 0.0 ~ 1.0
+        // 將音量對映到風強度範圍
+        windStrength = map(level, 0, 0.3, baseWind, 0.001, true);
+
+        // 把影像畫到內部 gfx，再抓像素
+        if (img || (vid && vid.loadedmetadata)) {
           gfx.clear();
           if (img) {
             gfx.image(img, gfx.width / 2, gfx.height / 2);
-          } else if (vid && vid.loadedmetadata) {
+          } else {
             gfx.image(
               vid,
               gfx.width / 2,
@@ -79,7 +103,7 @@
             );
           }
           gfx.loadPixels();
-          // 重新生成 particles（也可以改成只一次生成，這裡示範每幀都更新顏色）
+
           let idx = 0;
           for (let y = 0; y < gfx.height; y += 2) {
             for (let x = 0; x < gfx.width; x += 2) {
@@ -89,9 +113,9 @@
                 gfx.pixels[i + 1],
                 gfx.pixels[i + 2]
               );
-              // 如果已經有這個 particle，就更新顏色；沒有就 push 新的
               if (particles[idx]) {
                 particles[idx].color = c;
+                particles[idx].resetWind(); // 更新每個粒子的風向／強度
               } else {
                 let px = x + width / 2 - gfx.width / 2;
                 let py = y + height / 2 - gfx.height / 2;
@@ -100,21 +124,34 @@
               idx++;
             }
           }
-          // 如果多餘，就刪掉
+          // 刪除多餘粒子
           particles.splice(idx);
         }
 
-        // 更新、繪製
+        // 更新與繪製
         for (let p of particles) {
           p.update();
           p.display();
         }
+
+        // （選用）顯示目前音量與風強度
+        noStroke();
+        fill(255);
+        text(
+          `Level: ${level.toFixed(3)}  Wind: ${windStrength.toFixed(3)}`,
+          120,
+          20
+        );
       }
 
       function gotFile(file) {
-        // 先清掉舊的
         img = vid = null;
         particles = [];
+        userStartAudio().then(() => {
+          if (!song.isPlaying()) {
+            song.loop();
+          }
+        });
 
         if (file.type === "image") {
           loadImage(file.data, (loaded) => {
@@ -126,11 +163,13 @@
             vid.loop();
             vid.volume(1);
             vid.hide();
-            // 確保 gfx 大小配合影片
-            if (vid.width > vid.height) {
-              vid.size(imgSize, vid.height * (imgSize / vid.width));
+            // 調整 gfx 尺寸
+            let w = vid.width,
+              h = vid.height;
+            if (w > h) {
+              vid.size(imgSize, (h * imgSize) / w);
             } else {
-              vid.size(vid.width * (imgSize / vid.height), imgSize);
+              vid.size((w * imgSize) / h, imgSize);
             }
             gfx.resizeCanvas(vid.width, vid.height);
           });
@@ -141,21 +180,30 @@
         constructor(x, y, col) {
           this.pos = createVector(x, y);
           this.vel = createVector(random(-0.05, 0.05), random(-0.05, 0.05));
-          this.acc = createVector(
-            random(-windStrength, windStrength),
-            random(-0.00001, 0.00001)
-          );
-          this.decay = random(0.0001, 0.0003);
+          this.initCol = col;
           this.color = col;
           this.alpha = 255;
           this.size = random(1.5, 3);
+          this.resetWind();
+          this.decay = random(0.0001, 0.0003);
         }
+
+        // 根據全局 windStrength 重新產生加速度向量
+        resetWind() {
+          let angle =
+            noise(this.pos.x * 0.005, this.pos.y * 0.005, frameCount * 0.005) *
+            TWO_PI *
+            2;
+          this.acc = p5.Vector.fromAngle(angle).mult(windStrength);
+        }
+
         update() {
           this.vel.add(this.acc);
           this.pos.add(this.vel);
           this.acc.mult(this.decay);
           this.alpha -= 0.003;
         }
+
         display() {
           noStroke();
           fill(
@@ -171,7 +219,6 @@
       function windowResized() {
         resizeCanvas(windowWidth, windowHeight);
       }
-
       // // 全域變數
       // let particles = [];
       // let attractors = [];

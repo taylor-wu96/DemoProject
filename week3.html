@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Solar Wind Archive｜太陽風記憶體</title>
+    <script src="./p5.min.js"></script>
+    <script src="./p5.sound.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: "Helvetica Neue", sans-serif;
+      }
+      #overlay {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        text-align: center;
+        z-index: 10;
+      }
+      #overlay h1 {
+        margin: 0 0 10px;
+        font-size: 1.5em;
+        color: #ffcc99;
+      }
+      #overlay p {
+        font-size: 0.9em;
+        color: #cccccc;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // let displayScale = 0.2; // 顯示比例（調整到你螢幕適合的倍數）
+      function convertToGrayscale(srcImg) {
+        let grayImg = createImage(srcImg.width, srcImg.height);
+        console.log(srcImg.width, srcImg.height);
+        srcImg.loadPixels();
+        grayImg.loadPixels();
+
+        for (let i = 0; i < srcImg.pixels.length; i += 4) {
+          let r = srcImg.pixels[i];
+          let g = srcImg.pixels[i + 1];
+          let b = srcImg.pixels[i + 2];
+          // 計算亮度值 (加權平均法)
+          let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          // 對比增強：加深白黑差異
+          brightness = brightness > 128 ? 0 : 255;
+          grayImg.pixels[i] = 0;
+          grayImg.pixels[i + 1] = 0;
+          grayImg.pixels[i + 2] = 0;
+          grayImg.pixels[i + 3] = brightness;
+        }
+
+        grayImg.updatePixels();
+        return grayImg;
+      }
+
+      // let maskImg;
+      // let textureImg;
+      // let resultImg;
+
+      function preload() {
+        maskImg = loadImage("sample.png"); // 彩色輪廓圖
+        // textureImg = loadImage("texture.jpg"); // 質感圖
+      }
+
+      // function setup() {
+      //   // 以 mask 圖的大小為主進行計算
+      //   let canvasWidth = maskImg.width * displayScale;
+      //   let canvasHeight = maskImg.height * displayScale;
+
+      //   createCanvas(canvasWidth, canvasHeight);
+      //   pixelDensity(1); // 可避免 Retina 裝置額外拉高解析度
+
+      //   // Resize texture to match full res mask
+      //   textureImg.resize(maskImg.width, maskImg.height);
+
+      //   let grayMask = convertToGrayscale(maskImg);
+      //   resultImg = textureImg.get();
+      //   resultImg.mask(grayMask);
+      //   image(resultImg, 0, 0, width, height);
+      // }
+      // function draw() {
+      //   // background(30);
+      //   // 把結果圖縮放顯示到畫布上（不改變原圖解析度）
+      // }
+      // Texture 2
+      let pg, cols, rows;
+      let scl = 6; // 每個 noise 點的大小
+      let zoff = 0; // 第三維度，推動「流動」
+      let colorIndexMap = [];
+      const colors = [
+        "#bab6b0",
+        "#d5cdc0",
+        "#d0e2ee",
+        "#63665c",
+        "#928677",
+        "#d5dde1",
+        "#696b67",
+        "#796354",
+      ];
+      const SWAP_PROB = 0.02; // 每幀有 2% 機率旋轉一行
+      let counter = 0;
+
+      function setup() {
+        createCanvas(2000, 1600);
+        pixelDensity(1);
+        cols = floor(width / scl);
+        rows = floor(height / scl);
+        pg = createGraphics(cols, rows);
+        for (let y = 0; y < rows; y++) {
+          colorIndexMap[y] = [];
+          let randomIndex = random() * random() * 1000;
+          for (let x = 0; x < cols; x++) {
+            colorIndexMap[y][x] = Math.floor(
+              noise(x * 0.2, y * 0.2, randomIndex) * colors.length
+            );
+          }
+        }
+      }
+
+      function draw() {
+        // if (random() < 0.003) {
+        //
+        // }
+        // counter += 1;
+        // 在小畫布上填噪聲
+
+        pg.loadPixels();
+
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            let colorIndexFrom = colorIndexMap[y][counter % cols];
+            let colorIndexTo = colorIndexMap[y][(1 + counter) % cols];
+            // console.log(colorIndexFrom, colorIndexTo);
+            let n = noise(x * 0.2, y * 0.2, zoff);
+            // 深淺棕之間線性插值
+            let col = lerpColor(
+              color(colors[colorIndexFrom]),
+              color(colors[colorIndexTo]),
+              n
+            );
+            let idx = (x + y * cols) * 4;
+            pg.pixels[idx] = red(col);
+            pg.pixels[idx + 1] = green(col);
+            pg.pixels[idx + 2] = blue(col);
+            pg.pixels[idx + 3] = 255;
+          }
+        }
+        pg.updatePixels();
+
+        // 將小畫布放大顯示
+        image(pg, 0, 0, width, height);
+
+        // 推進 zoff，下一幀就會「流動」
+        zoff += 0.2;
+        if (random() < SWAP_PROB) {
+          // 先把最前面那列拿出來，再加回最尾端
+          let row = colorIndexMap.shift();
+          colorIndexMap.push(row);
+          counter += 1;
+        }
+      }
+      // version 3
+      // let maskImg;
+      // let resultImg;
+      // let grayMask;
+      // let pg, cols, rows;
+      // let scl = 5;
+      // let zoff = 0;
+      // let colorIndexMap = [];
+      // let counter = 0;
+      // const SWAP_PROB = 0.3;
+      // const colors = [
+      //   "#bab6b0",
+      //   "#d5cdc0",
+      //   "#d0e2ee",
+      //   "#63665c",
+      //   "#928677",
+      //   "#d5dde1",
+      //   "#696b67",
+      //   "#796354",
+      // ];
+      // let displayScale = 0.1;
+
+      // function preload() {
+      //   maskImg = loadImage("sample.png"); // 彩色輪廓圖
+      // }
+
+      // function setup() {
+      //   let canvasWidth = maskImg.width * displayScale;
+      //   let canvasHeight = maskImg.height * displayScale;
+      //   createCanvas(canvasWidth, canvasHeight);
+      //   pixelDensity(1);
+
+      //   // Initialize flow texture (pg) same size as maskImg
+      //   cols = floor(maskImg.width / scl);
+      //   rows = floor(maskImg.height / scl);
+      //   pg = createGraphics(maskImg.width, maskImg.height);
+
+      //   // Initialize color map
+      //   for (let y = 0; y < rows; y++) {
+      //     colorIndexMap[y] = [];
+      //     let randomIndex = random() * random() * 1000;
+      //     for (let x = 0; x < cols; x++) {
+      //       colorIndexMap[y][x] = floor(
+      //         noise(x * 0.2, y * 0.2, randomIndex) * colors.length
+      //       );
+      //     }
+      //   }
+
+      //   grayMask = convertToGrayscale(maskImg);
+      //   image(grayMask, 0, 0, width, height);
+      // }
+
+      // function draw() {
+      //   generateFlowTexture(); // update pg
+      //   // // Use current flow texture as base
+      //   let tempTexture = pg.get();
+      //   resultImg = tempTexture;
+      //   resultImg.mask(grayMask);
+      //   image(tempTexture, 0, 0, width, height);
+      // }
+
+      // // Generate flowing texture into pg
+      // function generateFlowTexture() {
+      //   pg.loadPixels();
+      //   for (let y = 0; y < rows; y++) {
+      //     for (let x = 0; x < cols; x++) {
+      //       let colorIndexFrom = colorIndexMap[y][counter % cols];
+      //       let colorIndexTo = colorIndexMap[y][(counter + 1) % cols];
+      //       let n = noise(x * 0.2, y * 0.2, zoff);
+      //       let col = lerpColor(
+      //         color(colors[colorIndexFrom]),
+      //         color(colors[colorIndexTo]),
+      //         n
+      //       );
+      //       let px = x * scl;
+      //       let py = y * scl;
+      //       for (let dy = 0; dy < scl; dy++) {
+      //         for (let dx = 0; dx < scl; dx++) {
+      //           let idx = 4 * (px + dx + (py + dy) * pg.width);
+      //           pg.pixels[idx] = red(col);
+      //           pg.pixels[idx + 1] = green(col);
+      //           pg.pixels[idx + 2] = blue(col);
+      //           pg.pixels[idx + 3] = 255;
+      //         }
+      //       }
+      //     }
+      //   }
+      //   pg.updatePixels();
+      //   zoff += 0.3;
+      //   if (random() < SWAP_PROB) {
+      //     let row = colorIndexMap.shift();
+      //     colorIndexMap.push(row);
+      //     counter += 1;
+      //   }
+      // }
+
+      // // Convert a color image to binary mask (black & transparent)
+      // function convertToGrayscale(srcImg) {
+      //   let grayImg = createImage(srcImg.width, srcImg.height);
+      //   srcImg.loadPixels();
+      //   grayImg.loadPixels();
+      //   for (let i = 0; i < srcImg.pixels.length; i += 4) {
+      //     let r = srcImg.pixels[i];
+      //     let g = srcImg.pixels[i + 1];
+      //     let b = srcImg.pixels[i + 2];
+      //     let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+      //     brightness = brightness > 128 ? 0 : 255 - floor(brightness / 4); // binary
+      //     grayImg.pixels[i] = brightness;
+      //     grayImg.pixels[i + 1] = brightness;
+      //     grayImg.pixels[i + 2] = brightness;
+      //     grayImg.pixels[i + 3] = brightness;
+      //   }
+      //   grayImg.updatePixels();
+      //   return grayImg;
+      // }
+    </script>
+  </body>
+</html>

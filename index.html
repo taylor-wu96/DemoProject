@@ -210,7 +210,7 @@
             // 用 noise 產生 -30 ~ +30 度的 hue 偏移
             let t = frameCount * 0.005; // 控制時間流速
             let n = noise(this.pos.x * 0.01, this.pos.y * 0.01, t);
-            let shift = map(n, 0, 1, -45, 45);
+            let shift = map(n, 0, 1, -30, 30);
 
             // 計算新顏色並繪製
             let dynamicColor = color((h + shift + 360) % 360, s, b, this.alpha);

@@ -90,12 +90,12 @@
           this.pos = sunPos.copy().add(random(-20, 20), random(-20, 20));
           // 大致往下斜右的角度，加上一點隨機範圍
           const baseAngle = PI * 0.7;
-          this.angle = random(baseAngle - 0.2, baseAngle + 0.2);
+          this.angle = random(baseAngle - 0.2 * PI, baseAngle + 0.2 * PI);
           this.speed = random(2, 20);
           this.vel = p5.Vector.fromAngle(this.angle).mult(this.speed);
-          this.lifespan = random(120, 180);
-          this.size = random(0.1, 5);
-          this.noiseOffset = random(1000);
+          this.lifespan = random(200, 600);
+          this.size = random(0.1, 2);
+          this.noiseOffset = random(5000);
         }
 
         update() {

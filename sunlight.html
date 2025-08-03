@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Solar Wind Archive｜太陽風記憶體</title>
+    <script src="./p5.min.js"></script>
+    <script src="./p5.sound.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: "Helvetica Neue", sans-serif;
+      }
+      #overlay {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        text-align: center;
+        z-index: 10;
+      }
+      #overlay h1 {
+        margin: 0 0 10px;
+        font-size: 1.5em;
+        color: #ffcc99;
+      }
+      #overlay p {
+        font-size: 0.9em;
+        color: #cccccc;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      let particles = [];
+      let sunPos;
+      let maskImg;
+      function preload() {
+        maskImg = loadImage("sample2.png"); // 彩色輪廓圖
+        // textureImg = loadImage("texture.jpg"); // 質感圖
+      }
+      function setup() {
+        createCanvas(windowWidth, windowHeight);
+        // 設定光源位置（可自行調整）
+        sunPos = createVector(width * 1, height * 0);
+        noStroke();
+        maskImg = convertToGrayscale(maskImg);
+        // maskImg.resize(windowWidth, windowHeight);
+      }
+
+      function draw() {
+        image(
+          maskImg,
+          (windowWidth - maskImg.width) / 2,
+          (windowHeight - maskImg.height) / 2
+        );
+        // 半透明深色背景，保留上一幀的光跡
+        // background(20, 20, 30, 25);
+
+        // 啟用加色 (ADD) 混合模式，增強光暈
+        blendMode(ADD);
+
+        // 每幀產生少量新粒子
+        for (let i = 0; i < 100; i++) {
+          particles.push(new SunParticle());
+        }
+
+        // 更新並繪製
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.update();
+          p.show();
+          if (p.isDead()) {
+            particles.splice(i, 1);
+          }
+        }
+
+        // 回到預設混合模式
+        blendMode(BLEND);
+      }
+
+      // ------ 粒子類別 ------
+      class SunParticle {
+        constructor() {
+          // 從光源附近隨機一點產生
+          this.pos = sunPos.copy().add(random(-20, 20), random(-20, 20));
+          // 大致往下斜右的角度，加上一點隨機範圍
+          const baseAngle = PI * 0.7;
+          this.angle = random(baseAngle - 0.2, baseAngle + 0.2);
+          this.speed = random(2, 20);
+          this.vel = p5.Vector.fromAngle(this.angle).mult(this.speed);
+          this.lifespan = random(120, 180);
+          this.size = random(0.1, 5);
+          this.noiseOffset = random(1000);
+        }
+
+        update() {
+          // 加入噪聲微抖
+          const n = noise(this.noiseOffset, frameCount * 0.01) - 0.5;
+          this.vel.rotate(n * 0.1);
+          this.pos.add(this.vel);
+          this.lifespan--;
+        }
+
+        show() {
+          // 生命結束時慢慢消失
+          const alpha = map(this.lifespan, 0, 120, 0, 200);
+          fill(255, 230, 180, alpha);
+          ellipse(this.pos.x, this.pos.y, this.size);
+        }
+
+        isDead() {
+          return this.lifespan <= 0;
+        }
+      }
+
+      function convertToGrayscale(srcImg) {
+        let grayImg = createImage(srcImg.width, srcImg.height);
+        console.log(srcImg.width, srcImg.height);
+        srcImg.loadPixels();
+        grayImg.loadPixels();
+
+        for (let i = 0; i < srcImg.pixels.length; i += 4) {
+          let r = srcImg.pixels[i];
+          let g = srcImg.pixels[i + 1];
+          let b = srcImg.pixels[i + 2];
+          // 計算亮度值 (加權平均法)
+          let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          // 對比增強：加深白黑差異
+          // brightness = brightness > 128 ? 0 : 255;
+          grayImg.pixels[i] = brightness / 6;
+          grayImg.pixels[i + 1] = brightness / 6;
+          grayImg.pixels[i + 2] = brightness / 6;
+          grayImg.pixels[i + 3] = 255 - brightness;
+        }
+
+        grayImg.updatePixels();
+        return grayImg;
+      }
+
+      // 自動對齊視窗大小
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+    </script>
+  </body>
+</html>

@@ -76,7 +76,6 @@
         maskImg = convertToGrayscale(maskImg);
         startTime = millis(); // record when program starts
         // maskImg.resize(windowWidth, windowHeight);
-        startMusic();
       }
 
       function draw() {
@@ -286,6 +285,12 @@
       function windowResized() {
         resizeCanvas(windowWidth, windowHeight);
       }
+      window.addEventListener("click", () => {
+        if (!isPlaying) {
+          startMusic();
+          isPlaying = true;
+        }
+      });
     </script>
   </body>
 </html>

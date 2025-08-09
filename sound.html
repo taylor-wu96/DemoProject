@@ -2,341 +2,787 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>風之綠洲 - Oasis of the Wind</title>
-    <script src="/tone.js"></script>
-  </head>
-  <body
-    style="
-      background: radial-gradient(circle at center, #1a2b3d 0%, #0f1419 100%);
-      color: #e8f4f8;
-      text-align: center;
-      padding: 50px 20px;
-      font-family: 'Georgia', serif;
-      min-height: 100vh;
-      margin: 0;
-      overflow: hidden;
-    ">
-    <div style="position: relative; z-index: 10">
-      <h1
-        style="
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          text-shadow: 0 0 30px rgba(232, 244, 248, 0.4);
-          font-weight: 300;
-          letter-spacing: 3px;
-        ">
-        風之綠洲
-      </h1>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>夜都市環境音樂生成器</title>
+    <script src="./tone.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-      <p
-        style="
-          font-size: 1.2rem;
-          opacity: 0.7;
-          margin-bottom: 3rem;
-          font-style: italic;
-        ">
-        Oasis of the Wind
-      </p>
+      body {
+        background: linear-gradient(
+          135deg,
+          #0a0a0a 0%,
+          #1a1a2e 30%,
+          #16213e 70%,
+          #0f3460 100%
+        );
+        color: #e0e0e0;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        min-height: 100vh;
+        padding: 20px;
+        overflow-x: hidden;
+      }
 
-      <button
-        id="startBtn"
-        style="
-          padding: 20px 40px;
-          font-size: 1.1rem;
-          background: rgba(232, 244, 248, 0.1);
-          color: #e8f4f8;
-          border: 2px solid rgba(232, 244, 248, 0.3);
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.4s ease;
-          backdrop-filter: blur(10px);
-          font-family: inherit;
-        "
-        onmouseover="this.style.background='rgba(232, 244, 248, 0.2)'; this.style.borderColor='rgba(232, 244, 248, 0.5)'"
-        onmouseout="this.style.background='rgba(232, 244, 248, 0.1)'; this.style.borderColor='rgba(232, 244, 248, 0.3)'">
-        啟動音景
-      </button>
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        position: relative;
+      }
 
-      <div
-        id="status"
-        style="
-          margin-top: 3rem;
-          font-size: 1rem;
-          opacity: 0.6;
-          min-height: 20px;
-        "></div>
-    </div>
+      .title {
+        text-align: center;
+        font-size: 2.8rem;
+        font-weight: 100;
+        letter-spacing: 4px;
+        margin: 40px 0;
+        background: linear-gradient(45deg, #4a90e2, #7b68ee, #4a90e2);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 30px rgba(74, 144, 226, 0.3);
+        animation: glow 4s ease-in-out infinite alternate;
+      }
 
-    <!-- 動態背景粒子 -->
-    <canvas
-      id="particles"
-      style="
+      @keyframes glow {
+        0% {
+          filter: brightness(1);
+        }
+        100% {
+          filter: brightness(1.2);
+        }
+      }
+
+      .subtitle {
+        text-align: center;
+        font-size: 1.2rem;
+        color: #888;
+        margin-bottom: 50px;
+        font-weight: 300;
+        letter-spacing: 2px;
+      }
+
+      .main-controls {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 60px;
+        flex-wrap: wrap;
+      }
+
+      .main-button {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border: none;
+        color: white;
+        padding: 18px 40px;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        font-weight: 300;
+        letter-spacing: 1px;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 8px 25px rgba(46, 82, 152, 0.3);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .main-button::before {
+        content: "";
         position: absolute;
         top: 0;
-        left: 0;
+        left: -100%;
         width: 100%;
         height: 100%;
-        z-index: 1;
-        opacity: 0.3;
-      "></canvas>
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .main-button:hover::before {
+        left: 100%;
+      }
+
+      .main-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(46, 82, 152, 0.4);
+      }
+
+      .main-button.playing {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        50% {
+          box-shadow: 0 8px 35px rgba(102, 126, 234, 0.6);
+        }
+      }
+
+      .layers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 25px;
+        margin-bottom: 50px;
+      }
+
+      .layer-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        padding: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.4s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .layer-card::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(
+          circle,
+          rgba(74, 144, 226, 0.1) 0%,
+          transparent 50%
+        );
+        transform: scale(0);
+        transition: transform 0.6s ease;
+      }
+
+      .layer-card:hover::before {
+        transform: scale(1);
+      }
+
+      .layer-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(74, 144, 226, 0.3);
+      }
+
+      .layer-title {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        color: #4a90e2;
+        font-weight: 300;
+        position: relative;
+        z-index: 2;
+      }
+
+      .control-group {
+        margin-bottom: 20px;
+        position: relative;
+        z-index: 2;
+      }
+
+      .control-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        color: #bbb;
+        font-size: 0.95rem;
+      }
+
+      .control-value {
+        color: #4a90e2;
+        font-weight: 500;
+      }
+
+      .slider {
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.1);
+        outline: none;
+        transition: all 0.3s ease;
+      }
+
+      .slider::-webkit-slider-thumb {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4a90e2, #7b68ee);
+        cursor: pointer;
+        box-shadow: 0 0 15px rgba(74, 144, 226, 0.5);
+        transition: all 0.2s ease;
+      }
+
+      .slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+      }
+
+      .toggle-button {
+        background: rgba(74, 144, 226, 0.2);
+        border: 1px solid rgba(74, 144, 226, 0.4);
+        color: #4a90e2;
+        padding: 8px 16px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+      }
+
+      .toggle-button.active {
+        background: linear-gradient(135deg, #4a90e2, #7b68ee);
+        color: white;
+        box-shadow: 0 0 15px rgba(74, 144, 226, 0.4);
+      }
+
+      .visualizer {
+        height: 150px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        margin: 30px 0;
+        border: 1px solid rgba(74, 144, 226, 0.2);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .frequency-bar {
+        position: absolute;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(to top, #4a90e2, #7b68ee);
+        border-radius: 2px 2px 0 0;
+        opacity: 0.7;
+        animation: frequency 2s ease-in-out infinite alternate;
+      }
+
+      @keyframes frequency {
+        0% {
+          height: 20%;
+        }
+        100% {
+          height: 60%;
+        }
+      }
+
+      .atmosphere-text {
+        text-align: center;
+        font-size: 1.1rem;
+        color: #888;
+        margin: 40px 0;
+        line-height: 1.6;
+        font-style: italic;
+      }
+
+      .presets {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 40px;
+      }
+
+      .preset-button {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #ccc;
+        padding: 15px 20px;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+      }
+
+      .preset-button:hover {
+        background: rgba(74, 144, 226, 0.2);
+        border-color: rgba(74, 144, 226, 0.4);
+        color: #4a90e2;
+        transform: translateY(-2px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="title">夜都市環境音樂</h1>
+      <p class="subtitle">基於Takashi Kokubo & Brian Eno風格的即時生成</p>
+
+      <div class="main-controls">
+        <button id="playBtn" class="main-button">▶ 開始音樂之旅</button>
+        <button id="stopBtn" class="main-button">⏹ 停止</button>
+        <button id="regenerateBtn" class="main-button">🔄 重新生成</button>
+      </div>
+
+      <div class="visualizer" id="visualizer"></div>
+
+      <div class="layers-grid">
+        <div class="layer-card">
+          <h3 class="layer-title">🌊 深層襯墊</h3>
+          <div class="control-group">
+            <div class="control-label">
+              <span>音量</span>
+              <span class="control-value" id="padVolume">65</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="padVol"
+              min="0"
+              max="100"
+              value="65" />
+          </div>
+          <div class="control-group">
+            <div class="control-label">
+              <span>濾波器</span>
+              <span class="control-value" id="padFilter">40</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="padFilt"
+              min="0"
+              max="100"
+              value="40" />
+          </div>
+          <button class="toggle-button" id="padToggle">啟用</button>
+        </div>
+
+        <div class="layer-card">
+          <h3 class="layer-title">🎵 稀疏旋律</h3>
+          <div class="control-group">
+            <div class="control-label">
+              <span>音量</span>
+              <span class="control-value" id="melodyVolume">45</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="melodyVol"
+              min="0"
+              max="100"
+              value="45" />
+          </div>
+          <div class="control-group">
+            <div class="control-label">
+              <span>稀疏度</span>
+              <span class="control-value" id="melodyDensity">25</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="melodyDens"
+              min="0"
+              max="100"
+              value="25" />
+          </div>
+          <button class="toggle-button" id="melodyToggle">啟用</button>
+        </div>
+
+        <div class="layer-card">
+          <h3 class="layer-title">🎺 持續音</h3>
+          <div class="control-group">
+            <div class="control-label">
+              <span>音量</span>
+              <span class="control-value" id="droneVolume">55</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="droneVol"
+              min="0"
+              max="100"
+              value="55" />
+          </div>
+          <div class="control-group">
+            <div class="control-label">
+              <span>音高漂移</span>
+              <span class="control-value" id="droneDrift">30</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="droneDrft"
+              min="0"
+              max="100"
+              value="30" />
+          </div>
+          <button class="toggle-button active" id="droneToggle">啟用</button>
+        </div>
+
+        <div class="layer-card">
+          <h3 class="layer-title">🌫️ 環境質感</h3>
+          <div class="control-group">
+            <div class="control-label">
+              <span>混響</span>
+              <span class="control-value" id="reverbAmount">75</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="reverbAmt"
+              min="0"
+              max="100"
+              value="75" />
+          </div>
+          <div class="control-group">
+            <div class="control-label">
+              <span>延遲</span>
+              <span class="control-value" id="delayAmount">35</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="delayAmt"
+              min="0"
+              max="100"
+              value="35" />
+          </div>
+          <button class="toggle-button active" id="fxToggle">啟用</button>
+        </div>
+      </div>
+
+      <div class="atmosphere-text">
+        "在夜晚的都市中，每一束光都訴說著一個故事，每一個陰影都蘊含著無限的可能..."
+      </div>
+
+      <div class="presets">
+        <button class="preset-button" onclick="loadPreset('solitude')">
+          🌙 孤獨夜晚
+        </button>
+        <button class="preset-button" onclick="loadPreset('mystery')">
+          🌃 城市之謎
+        </button>
+        <button class="preset-button" onclick="loadPreset('contemplation')">
+          🧘 深度沉思
+        </button>
+        <button class="preset-button" onclick="loadPreset('distant')">
+          ✨ 遠方燈火
+        </button>
+      </div>
+    </div>
 
     <script>
+      // Global audio objects
+      let audioContext;
       let isPlaying = false;
-      let synths = [];
+      let synths = {};
+      let effects = {};
+      let sequences = {};
+      let layers = {
+        pad: true,
+        melody: false,
+        drone: true,
+        fx: true,
+      };
 
-      // 粒子動畫
-      const canvas = document.getElementById("particles");
-      const ctx = canvas.getContext("2d");
-      let particles = [];
+      // Musical scales and progressions for night atmosphere
+      const nightChords = [
+        ["A3", "C4", "E4", "G4"], // Am7
+        ["F3", "A3", "C4", "E4"], // Fmaj7
+        ["C3", "E3", "G3", "B3"], // Cmaj7
+        ["G3", "B3", "D4", "F#4"], // G7
+        ["D3", "F#3", "A3", "C4"], // Dm7
+        ["E3", "G#3", "B3", "D4"], // E7
+      ];
 
-      function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+      const melodyNotes = ["A4", "C5", "E5", "F5", "G5", "A5", "C6"];
+      const droneNotes = ["A1", "E2", "A2"];
+
+      async function initializeAudio() {
+        await Tone.start();
+
+        // Create effects chain
+        effects.reverb = new Tone.Reverb(6).toDestination();
+        effects.delay = new Tone.PingPongDelay("8n", 0.2).connect(
+          effects.reverb
+        );
+        effects.filter = new Tone.Filter(800, "lowpass").connect(effects.delay);
+
+        // Create synthesizers
+        synths.pad = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: "sawtooth" },
+          envelope: { attack: 8, decay: 0.1, sustain: 0.9, release: 12 },
+          filter: { frequency: 1000, rolloff: -24, Q: 1 },
+        }).connect(effects.filter);
+
+        synths.melody = new Tone.Synth({
+          oscillator: { type: "sine" },
+          envelope: { attack: 3, decay: 2, sustain: 0.3, release: 8 },
+          filter: { frequency: 2000, rolloff: -12 },
+        }).connect(effects.reverb);
+
+        synths.drone = new Tone.Synth({
+          oscillator: { type: "triangle" },
+          envelope: { attack: 12, decay: 0, sustain: 1, release: 15 },
+          filter: { frequency: 400, rolloff: -24 },
+        }).connect(effects.filter);
+
+        // Set initial volumes
+        synths.pad.volume.value = -15;
+        synths.melody.volume.value = -20;
+        synths.drone.volume.value = -18;
+
+        updateVisualization();
       }
 
-      function createParticles() {
-        for (let i = 0; i < 50; i++) {
-          particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: (Math.random() - 0.5) * 0.5,
-            size: Math.random() * 2 + 0.5,
-            opacity: Math.random() * 0.5 + 0.1,
-          });
+      function createPadSequence() {
+        let chordIndex = 0;
+        sequences.pad = new Tone.Loop((time) => {
+          if (layers.pad) {
+            const chord = nightChords[chordIndex % nightChords.length];
+            synths.pad.triggerAttackRelease(chord, "2m", time);
+            chordIndex++;
+          }
+        }, "4m");
+        sequences.pad.start(0);
+      }
+
+      function createMelodySequence() {
+        sequences.melody = new Tone.Loop((time) => {
+          if (layers.melody) {
+            const density =
+              parseInt(document.getElementById("melodyDens").value) / 100;
+            if (Math.random() < density * 0.4) {
+              const note =
+                melodyNotes[Math.floor(Math.random() * melodyNotes.length)];
+              const duration = Math.random() > 0.5 ? "2n" : "4n";
+              synths.melody.triggerAttackRelease(note, duration, time);
+            }
+          }
+        }, "1m");
+        sequences.melody.start(0);
+      }
+
+      function createDroneSequence() {
+        let droneIndex = 0;
+        sequences.drone = new Tone.Loop((time) => {
+          if (layers.drone) {
+            synths.drone.triggerRelease(time);
+            const note = droneNotes[droneIndex % droneNotes.length];
+            synths.drone.triggerAttack(note, time + 0.1);
+            droneIndex++;
+          }
+        }, "8m");
+        sequences.drone.start(0);
+      }
+
+      async function startMusic() {
+        if (isPlaying) return;
+
+        await initializeAudio();
+
+        isPlaying = true;
+        document.getElementById("playBtn").textContent = "⏸ 暫停";
+        document.getElementById("playBtn").classList.add("playing");
+
+        // Create sequences
+        createPadSequence();
+        createMelodySequence();
+        createDroneSequence();
+
+        // Start transport
+        Tone.Transport.bpm.value = 40;
+        Tone.Transport.start();
+
+        // Start drone immediately
+        if (layers.drone) {
+          synths.drone.triggerAttack("A1");
         }
       }
 
-      function animateParticles() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      function stopMusic() {
+        if (!isPlaying) return;
 
-        particles.forEach((particle) => {
-          particle.x += particle.vx;
-          particle.y += particle.vy;
+        isPlaying = false;
+        document.getElementById("playBtn").textContent = "▶ 開始音樂之旅";
+        document.getElementById("playBtn").classList.remove("playing");
 
-          if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
-          if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+        Tone.Transport.stop();
 
-          ctx.beginPath();
-          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(232, 244, 248, ${particle.opacity})`;
-          ctx.fill();
+        // Stop all sequences
+        Object.values(sequences).forEach((seq) => {
+          if (seq) seq.stop();
         });
 
-        requestAnimationFrame(animateParticles);
+        // Release all notes
+        Object.values(synths).forEach((synth) => {
+          if (synth.releaseAll) synth.releaseAll();
+          if (synth.triggerRelease) synth.triggerRelease();
+        });
       }
 
-      window.addEventListener("resize", resizeCanvas);
-      resizeCanvas();
-      createParticles();
-      animateParticles();
-      const track1 = new Tone.Player({
-        url: "./sound.mp3",
-        loop: true,
-        volume: 2, // 初始音量 (dB)
-      }).toDestination();
+      function regenerateMusic() {
+        if (isPlaying) {
+          stopMusic();
+          setTimeout(startMusic, 100);
+        }
+      }
 
-      document
-        .getElementById("startBtn")
-        .addEventListener("click", async () => {
-          if (isPlaying) return;
+      function updateVisualization() {
+        const visualizer = document.getElementById("visualizer");
+        visualizer.innerHTML = "";
 
-          const statusDiv = document.getElementById("status");
-          const startBtn = document.getElementById("startBtn");
+        for (let i = 0; i < 50; i++) {
+          const bar = document.createElement("div");
+          bar.className = "frequency-bar";
+          bar.style.left = i * 2 + 5 + "%";
+          bar.style.animationDelay = i * 0.1 + "s";
+          bar.style.animationDuration = 2 + Math.random() * 3 + "s";
+          visualizer.appendChild(bar);
+        }
+      }
 
-          try {
-            statusDiv.textContent = "正在進入風之綠洲...";
-            startBtn.disabled = true;
+      function updateAudio() {
+        if (!isPlaying) return;
 
-            await Tone.start();
+        // Update volumes
+        const padVol = parseInt(document.getElementById("padVol").value);
+        const melodyVol = parseInt(document.getElementById("melodyVol").value);
+        const droneVol = parseInt(document.getElementById("droneVol").value);
 
-            // === Master bus：統一處理底噪與子頻 ===
-            const masterBus = new Tone.Gain(1);
-            const lowCut = new Tone.Filter(45, "highpass"); // 去 45Hz 以下次聲
-            const masterEQ = new Tone.EQ3({ low: -6, mid: 0, high: -1 }); // 輕挖低頻、微收高頻嘶聲
-            const limiter = new Tone.Limiter(-3);
-            masterBus.chain(lowCut, masterEQ, limiter, Tone.Destination);
+        synths.pad.volume.value = -30 + padVol * 0.2;
+        synths.melody.volume.value = -35 + melodyVol * 0.25;
+        synths.drone.volume.value = -35 + droneVol * 0.2;
 
-            // 如需啟用外部音檔：改接 masterBus
-            track1.disconnect();
-            track1.connect(masterBus);
-            // track1.start(); // 如需播放再打開
+        // Update filter
+        const filterFreq = parseInt(document.getElementById("padFilt").value);
+        effects.filter.frequency.value = 200 + filterFreq * 15;
 
-            // ===== 1. 深層基底音 - 大地的呼吸 =====
-            const deepBass = new Tone.Oscillator(32, "sine").start();
-            const bassGain = new Tone.Gain(0.06); // 降低一點更乾淨
-            const bassFilter = new Tone.Filter(80, "lowpass");
-            deepBass.chain(bassFilter, bassGain);
-            bassGain.connect(masterBus);
+        // Update reverb
+        const reverbAmt =
+          parseInt(document.getElementById("reverbAmt").value) / 100;
+        effects.reverb.wet.value = reverbAmt * 0.8;
 
-            // 基底音的緩慢調制
-            const bassLFO = new Tone.LFO(0.01, 28, 36);
-            bassLFO.connect(deepBass.frequency);
-            bassLFO.start();
+        // Update delay
+        const delayAmt =
+          parseInt(document.getElementById("delayAmt").value) / 100;
+        effects.delay.wet.value = delayAmt * 0.4;
+      }
 
-            // ===== 2. 風聲層次 - 多層次的氣流 =====
-            // 遠方風聲
-            const distantWind = new Tone.Noise("brown").start();
-            const distantWindGain = new Tone.Gain(0.022); // 微降
-            const distantHP = new Tone.Filter(50, "highpass"); // 去除超低頻轟鳴
-            const distantWindFilter = new Tone.Filter(400, "lowpass");
-            distantWind.chain(distantHP, distantWindFilter, distantWindGain);
-            distantWindGain.connect(masterBus);
+      function toggleLayer(layerName) {
+        layers[layerName] = !layers[layerName];
+        const button = document.getElementById(layerName + "Toggle");
+        button.classList.toggle("active");
+        button.textContent = layers[layerName] ? "啟用" : "停用";
+      }
 
-            // 近處風聲
-            const closeWind = new Tone.Noise("pink").start();
-            const closeWindGain = new Tone.Gain(0.012); // 微降
-            const closeHP = new Tone.Filter(100, "highpass");
-            const closeWindFilter = new Tone.Filter(1200, "lowpass");
-            closeWind.chain(closeHP, closeWindFilter, closeWindGain);
-            closeWindGain.connect(masterBus);
+      function loadPreset(presetName) {
+        const presets = {
+          solitude: {
+            padVol: 80,
+            padFilt: 30,
+            melodyVol: 20,
+            melodyDens: 15,
+            droneVol: 70,
+            droneDrft: 20,
+            reverbAmt: 85,
+            delayAmt: 25,
+          },
+          mystery: {
+            padVol: 60,
+            padFilt: 60,
+            melodyVol: 40,
+            melodyDens: 35,
+            droneVol: 50,
+            droneDrft: 50,
+            reverbAmt: 90,
+            delayAmt: 60,
+          },
+          contemplation: {
+            padVol: 90,
+            padFilt: 20,
+            melodyVol: 30,
+            melodyDens: 20,
+            droneVol: 60,
+            droneDrft: 15,
+            reverbAmt: 75,
+            delayAmt: 30,
+          },
+          distant: {
+            padVol: 50,
+            padFilt: 70,
+            melodyVol: 15,
+            melodyDens: 10,
+            droneVol: 80,
+            droneDrft: 40,
+            reverbAmt: 95,
+            delayAmt: 50,
+          },
+        };
 
-            // 風的調制
-            const windLFO = new Tone.LFO(0.03, 0.01, 0.05);
-            windLFO.connect(distantWindGain.gain);
-            windLFO.start();
+        const preset = presets[presetName];
+        if (!preset) return;
 
-            // ===== 3. 和聲音墊 - 緩慢變化 =====
-            const pad1 = new Tone.Synth({
-              oscillator: { type: "sine" },
-              envelope: { attack: 8, decay: 2, sustain: 0.8, release: 12 },
-            });
-            const pad1Gain = new Tone.Gain(0.15);
-            const pad1Reverb = new Tone.Reverb(15);
-            pad1.chain(pad1Gain, pad1Reverb);
-            pad1Reverb.wet.value = 0.6;
-            pad1Reverb.connect(masterBus);
-            synths.push(pad1);
+        Object.entries(preset).forEach(([key, value]) => {
+          const element = document.getElementById(key);
+          const display = document.getElementById(
+            key
+              .replace(/([A-Z])/g, "$1")
+              .replace(
+                /^./,
+                (m) => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()
+              )
+          );
 
-            const pad2 = new Tone.Synth({
-              oscillator: { type: "triangle" },
-              envelope: { attack: 12, decay: 3, sustain: 0.7, release: 15 },
-            });
-            const pad2Gain = new Tone.Gain(0.1);
-            const pad2Reverb = new Tone.Reverb(20);
-            pad2.chain(pad2Gain, pad2Reverb);
-            pad2Reverb.wet.value = 0.55;
-            pad2Reverb.connect(masterBus);
-            synths.push(pad2);
-
-            // 音階：多利安調式
-            const notes = [
-              "D3",
-              "E3",
-              "F3",
-              "G3",
-              "A3",
-              "Bb3",
-              "C4",
-              "D4",
-              "E4",
-              "F4",
-              "G4",
-              "A4",
-            ];
-
-            // 緩慢的和聲進行
-            function playHarmonicProgression() {
-              const intervals = [20000, 25000, 18000, 30000, 22000]; // 不規則間隔
-
-              function scheduleNote(delay, noteIndex) {
-                setTimeout(() => {
-                  if (isPlaying) {
-                    const note = notes[noteIndex % notes.length];
-                    const duration = Math.random() * 15 + 10; // 10-25秒
-
-                    if (Math.random() > 0.5) {
-                      pad1.triggerAttackRelease(note, duration);
-                    } else {
-                      pad2.triggerAttackRelease(note, duration);
-                    }
-
-                    const nextInterval =
-                      intervals[Math.floor(Math.random() * intervals.length)];
-                    const nextNote =
-                      (noteIndex + Math.floor(Math.random() * 3) + 1) %
-                      notes.length;
-                    scheduleNote(nextInterval, nextNote);
-                  }
-                }, delay);
-              }
-
-              scheduleNote(3000, 0);
-              scheduleNote(8000, 4);
-              scheduleNote(15000, 2);
-            }
-
-            playHarmonicProgression();
-
-            // ===== 4. 高頻泛音 - 空氣中的微光 =====
-            const shimmer = new Tone.Noise("white").start();
-            const shimmerGain = new Tone.Gain(0.005); // 關鍵：降低底噪
-            const shimmerFilter = new Tone.Filter(8000, "highpass");
-            const shimmerFilter2 = new Tone.Filter(12000, "lowpass");
-            shimmer.chain(shimmerFilter, shimmerFilter2, shimmerGain);
-            shimmerGain.connect(masterBus);
-
-            // 閃爍效果
-            function createShimmerEffect() {
-              if (isPlaying) {
-                shimmerGain.gain.linearRampTo(0.015, Math.random() * 2 + 1);
-                setTimeout(() => {
-                  if (isPlaying) {
-                    shimmerGain.gain.linearRampTo(0.005, Math.random() * 3 + 2);
-                    setTimeout(
-                      createShimmerEffect,
-                      Math.random() * 5000 + 3000
-                    );
-                  }
-                }, Math.random() * 2000 + 1000);
-              }
-            }
-            createShimmerEffect();
-
-            // ===== 5. 偶然的音色點綴 =====
-            const bellSynth = new Tone.Synth({
-              oscillator: { type: "sine" },
-              envelope: { attack: 0.1, decay: 3, sustain: 0.2, release: 8 },
-            });
-            const bellGain = new Tone.Gain(0.05);
-            const bellReverb = new Tone.Reverb(12);
-            bellSynth.chain(bellGain, bellReverb);
-            bellReverb.wet.value = 0.5;
-            bellReverb.connect(masterBus);
-
-            function occasionalBell() {
-              if (isPlaying) {
-                const highNotes = ["D5", "F5", "A5", "C6", "E6"];
-                const note =
-                  highNotes[Math.floor(Math.random() * highNotes.length)];
-                bellSynth.triggerAttackRelease(note, "2n");
-
-                // 下次響起：30秒到2分鐘
-                const nextTime = Math.random() * 90000 + 30000;
-                setTimeout(occasionalBell, nextTime);
-              }
-            }
-
-            setTimeout(occasionalBell, Math.random() * 45000 + 30000);
-
-            isPlaying = true;
-            statusDiv.textContent = "已進入風之綠洲 - 讓聲音帶領你的心靈";
-            startBtn.textContent = "音景進行中...";
-            startBtn.style.background = "rgba(100, 200, 150, 0.2)";
-            startBtn.style.borderColor = "rgba(100, 200, 150, 0.4)";
-          } catch (error) {
-            console.error("Error starting soundscape:", error);
-            statusDiv.textContent = "啟動失敗，請重試";
-            startBtn.disabled = false;
+          if (element) {
+            element.value = value;
+            if (display) display.textContent = value;
           }
         });
-      // 頁面關閉時清理
-      window.addEventListener("beforeunload", () => {
-        isPlaying = false;
-        if (Tone.Transport.state === "started") {
-          Tone.Transport.stop();
+
+        updateAudio();
+      }
+
+      // Event listeners
+      document.getElementById("playBtn").addEventListener("click", () => {
+        isPlaying ? stopMusic() : startMusic();
+      });
+
+      document.getElementById("stopBtn").addEventListener("click", stopMusic);
+      document
+        .getElementById("regenerateBtn")
+        .addEventListener("click", regenerateMusic);
+
+      // Layer toggles
+      ["pad", "melody", "drone", "fx"].forEach((layer) => {
+        const button = document.getElementById(layer + "Toggle");
+        if (button) {
+          button.addEventListener("click", () => toggleLayer(layer));
         }
       });
+
+      // Slider updates
+      const sliderMappings = {
+        padVol: "padVolume",
+        padFilt: "padFilter",
+        melodyVol: "melodyVolume",
+        melodyDens: "melodyDensity",
+        droneVol: "droneVolume",
+        droneDrft: "droneDrift",
+        reverbAmt: "reverbAmount",
+        delayAmt: "delayAmount",
+      };
+
+      Object.entries(sliderMappings).forEach(([sliderId, displayId]) => {
+        const slider = document.getElementById(sliderId);
+        const display = document.getElementById(displayId);
+
+        if (slider && display) {
+          slider.addEventListener("input", (e) => {
+            display.textContent = e.target.value;
+            updateAudio();
+          });
+        }
+      });
+
+      // Initialize visualization on load
+      window.addEventListener("load", updateVisualization);
     </script>
   </body>
 </html>

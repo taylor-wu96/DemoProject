@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>風之綠洲 - Oasis of the Wind</title>
+    <script src="/tone.js"></script>
+  </head>
+  <body
+    style="
+      background: radial-gradient(circle at center, #1a2b3d 0%, #0f1419 100%);
+      color: #e8f4f8;
+      text-align: center;
+      padding: 50px 20px;
+      font-family: 'Georgia', serif;
+      min-height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    ">
+    <div style="position: relative; z-index: 10">
+      <h1
+        style="
+          font-size: 3rem;
+          margin-bottom: 1rem;
+          text-shadow: 0 0 30px rgba(232, 244, 248, 0.4);
+          font-weight: 300;
+          letter-spacing: 3px;
+        ">
+        風之綠洲
+      </h1>
+
+      <p
+        style="
+          font-size: 1.2rem;
+          opacity: 0.7;
+          margin-bottom: 3rem;
+          font-style: italic;
+        ">
+        Oasis of the Wind
+      </p>
+
+      <button
+        id="startBtn"
+        style="
+          padding: 20px 40px;
+          font-size: 1.1rem;
+          background: rgba(232, 244, 248, 0.1);
+          color: #e8f4f8;
+          border: 2px solid rgba(232, 244, 248, 0.3);
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.4s ease;
+          backdrop-filter: blur(10px);
+          font-family: inherit;
+        "
+        onmouseover="this.style.background='rgba(232, 244, 248, 0.2)'; this.style.borderColor='rgba(232, 244, 248, 0.5)'"
+        onmouseout="this.style.background='rgba(232, 244, 248, 0.1)'; this.style.borderColor='rgba(232, 244, 248, 0.3)'">
+        啟動音景
+      </button>
+
+      <div
+        id="status"
+        style="
+          margin-top: 3rem;
+          font-size: 1rem;
+          opacity: 0.6;
+          min-height: 20px;
+        "></div>
+    </div>
+
+    <!-- 動態背景粒子 -->
+    <canvas
+      id="particles"
+      style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        opacity: 0.3;
+      "></canvas>
+
+    <script>
+      let isPlaying = false;
+      let synths = [];
+
+      // 粒子動畫
+      const canvas = document.getElementById("particles");
+      const ctx = canvas.getContext("2d");
+      let particles = [];
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function createParticles() {
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            size: Math.random() * 2 + 0.5,
+            opacity: Math.random() * 0.5 + 0.1,
+          });
+        }
+      }
+
+      function animateParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach((particle) => {
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+
+          if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
+          if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(232, 244, 248, ${particle.opacity})`;
+          ctx.fill();
+        });
+
+        requestAnimationFrame(animateParticles);
+      }
+
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+      createParticles();
+      animateParticles();
+      const track1 = new Tone.Player({
+        url: "./sound.mp3",
+        loop: true,
+        volume: -3, // 初始音量 (dB)
+      }).toDestination();
+
+      document
+        .getElementById("startBtn")
+        .addEventListener("click", async () => {
+          if (isPlaying) return;
+
+          const statusDiv = document.getElementById("status");
+          const startBtn = document.getElementById("startBtn");
+
+          try {
+            statusDiv.textContent = "正在進入風之綠洲...";
+            startBtn.disabled = true;
+
+            await Tone.start();
+            // track1.start();
+
+            // ===== 1. 深層基底音 - 大地的呼吸 =====
+            const deepBass = new Tone.Oscillator(32, "sine").start();
+            const bassGain = new Tone.Gain(0.08);
+            const bassFilter = new Tone.Filter(80, "lowpass");
+            deepBass.chain(bassFilter, bassGain);
+            bassGain.toDestination();
+
+            // 基底音的緩慢調制
+            const bassLFO = new Tone.LFO(0.01, 28, 36);
+            bassLFO.connect(deepBass.frequency);
+            bassLFO.start();
+
+            // ===== 2. 風聲層次 - 多層次的氣流 =====
+            // 遠方風聲
+            const distantWind = new Tone.Noise("brown").start();
+            const distantWindGain = new Tone.Gain(0.03);
+            const distantWindFilter = new Tone.Filter(400, "lowpass");
+            distantWind.chain(distantWindFilter, distantWindGain);
+            distantWindGain.toDestination();
+
+            // 近處風聲
+            const closeWind = new Tone.Noise("pink").start();
+            const closeWindGain = new Tone.Gain(0.02);
+            const closeWindFilter = new Tone.Filter(1200, "lowpass");
+            closeWind.chain(closeWindFilter, closeWindGain);
+            closeWindGain.toDestination();
+
+            // 風的調制
+            const windLFO = new Tone.LFO(0.03, 0.01, 0.05);
+            windLFO.connect(distantWindGain.gain);
+            windLFO.start();
+
+            // ===== 3. 和聲音墊 - Eno風格的緩慢變化 =====
+            const pad1 = new Tone.Synth({
+              oscillator: { type: "sine" },
+              envelope: { attack: 8, decay: 2, sustain: 0.8, release: 12 },
+            });
+            const pad1Gain = new Tone.Gain(0.15);
+            const pad1Reverb = new Tone.Reverb(15);
+            pad1.chain(pad1Gain, pad1Reverb);
+            pad1Reverb.toDestination();
+            synths.push(pad1);
+
+            const pad2 = new Tone.Synth({
+              oscillator: { type: "triangle" },
+              envelope: { attack: 12, decay: 3, sustain: 0.7, release: 15 },
+            });
+            const pad2Gain = new Tone.Gain(0.1);
+            const pad2Reverb = new Tone.Reverb(20);
+            pad2.chain(pad2Gain, pad2Reverb);
+            pad2Reverb.toDestination();
+            synths.push(pad2);
+
+            // 音階：多利安調式，創造神秘感
+            const notes = [
+              "D3",
+              "E3",
+              "F3",
+              "G3",
+              "A3",
+              "Bb3",
+              "C4",
+              "D4",
+              "E4",
+              "F4",
+              "G4",
+              "A4",
+            ];
+
+            // 緩慢的和聲進行
+            function playHarmonicProgression() {
+              const intervals = [20000, 25000, 18000, 30000, 22000]; // 不規則間隔
+
+              function scheduleNote(delay, noteIndex) {
+                setTimeout(() => {
+                  if (isPlaying) {
+                    const note = notes[noteIndex % notes.length];
+                    const duration = Math.random() * 15 + 10; // 10-25秒持續時間
+
+                    if (Math.random() > 0.5) {
+                      pad1.triggerAttackRelease(note, duration);
+                    } else {
+                      pad2.triggerAttackRelease(note, duration);
+                    }
+
+                    const nextInterval =
+                      intervals[Math.floor(Math.random() * intervals.length)];
+                    const nextNote =
+                      (noteIndex + Math.floor(Math.random() * 3) + 1) %
+                      notes.length;
+                    scheduleNote(nextInterval, nextNote);
+                  }
+                }, delay);
+              }
+
+              // 開始和聲進行
+              scheduleNote(3000, 0);
+              scheduleNote(8000, 4);
+              scheduleNote(15000, 2);
+            }
+
+            playHarmonicProgression();
+
+            // ===== 4. 高頻泛音 - 空氣中的微光 =====
+            const shimmer = new Tone.Noise("white").start();
+            const shimmerGain = new Tone.Gain(0.008);
+            const shimmerFilter = new Tone.Filter(8000, "highpass");
+            const shimmerFilter2 = new Tone.Filter(12000, "lowpass");
+            shimmer.chain(shimmerFilter, shimmerFilter2, shimmerGain);
+            shimmerGain.toDestination();
+
+            // 閃爍效果
+            function createShimmerEffect() {
+              if (isPlaying) {
+                shimmerGain.gain.linearRampTo(0.02, Math.random() * 2 + 1);
+                setTimeout(() => {
+                  if (isPlaying) {
+                    shimmerGain.gain.linearRampTo(0.008, Math.random() * 3 + 2);
+                    setTimeout(
+                      createShimmerEffect,
+                      Math.random() * 5000 + 3000
+                    );
+                  }
+                }, Math.random() * 2000 + 1000);
+              }
+            }
+            createShimmerEffect();
+
+            // ===== 5. 偶然的音色點綴 =====
+            const bellSynth = new Tone.Synth({
+              oscillator: { type: "sine" },
+              envelope: { attack: 0.1, decay: 3, sustain: 0.2, release: 8 },
+            });
+            const bellGain = new Tone.Gain(0.05);
+            const bellReverb = new Tone.Reverb(12);
+            bellSynth.chain(bellGain, bellReverb);
+            bellReverb.toDestination();
+
+            function occasionalBell() {
+              if (isPlaying) {
+                const highNotes = ["D5", "F5", "A5", "C6", "E6"];
+                const note =
+                  highNotes[Math.floor(Math.random() * highNotes.length)];
+                bellSynth.triggerAttackRelease(note, "2n");
+
+                // 下次響起的時間：30秒到2分鐘之間
+                const nextTime = Math.random() * 90000 + 30000;
+                setTimeout(occasionalBell, nextTime);
+              }
+            }
+
+            // 第一次響起延遲較長
+            setTimeout(occasionalBell, Math.random() * 45000 + 30000);
+
+            isPlaying = true;
+            statusDiv.textContent = "已進入風之綠洲 - 讓聲音帶領你的心靈";
+            startBtn.textContent = "音景進行中...";
+            startBtn.style.background = "rgba(100, 200, 150, 0.2)";
+            startBtn.style.borderColor = "rgba(100, 200, 150, 0.4)";
+          } catch (error) {
+            console.error("Error starting soundscape:", error);
+            statusDiv.textContent = "啟動失敗，請重試";
+            startBtn.disabled = false;
+          }
+        });
+
+      // 頁面關閉時清理
+      window.addEventListener("beforeunload", () => {
+        isPlaying = false;
+        if (Tone.Transport.state === "started") {
+          Tone.Transport.stop();
+        }
+      });
+    </script>
+  </body>
+</html>

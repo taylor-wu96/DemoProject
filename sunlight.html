@@ -42,6 +42,10 @@
       let lightColors = [];
       let colorIndex = 0;
       let restartSoon = false;
+      let startTime;
+      let isRestMode = false;
+      let restStartTime;
+      let changeLocation = false;
       function preload() {
         maskImg = loadImage("t03.png"); // 彩色輪廓圖
         // textureImg = loadImage("texture.jpg"); // 質感圖
@@ -51,7 +55,10 @@
         // 設定光源位置（可自行調整）
         for (let i = 0; i < 10; i++) {
           sunPos.push(
-            createVector(width * random(0.2, 0.8), height * random(0.2, 0.8))
+            createVector(
+              width * random(0.25, 0.75),
+              height * random(0.25, 0.75)
+            )
           );
         }
         lightColors = [
@@ -65,17 +72,80 @@
         ];
         noStroke();
         maskImg = convertToGrayscale(maskImg);
+        startTime = millis(); // record when program starts
         // maskImg.resize(windowWidth, windowHeight);
       }
 
       function draw() {
         // background(20, 20, 30, 25);
-
+        blendMode(ADD);
         // 半透明深色背景，保留上一幀的光跡
         // background(20, 20, 30, 25);
+        let elapsed = millis() - startTime;
+
+        // If running for more than 3 minutes and not in rest mode
+        if (!isRestMode && elapsed > 1 * 45 * 1000) {
+          isRestMode = true;
+          restStartTime = millis();
+          changeLocation = true;
+        }
+
+        // If in rest mode and more than 20 seconds passed, reset timer
+        if (isRestMode && millis() - restStartTime > 30 * 1000) {
+          isRestMode = false;
+          startTime = millis(); // reset main timer
+        } else if (isRestMode && changeLocation) {
+          sunPos = [];
+          for (let i = 0; i < 10; i++) {
+            sunPos.push(
+              createVector(
+                width * random(0.25, 0.75),
+                height * random(0.25, 0.75)
+              )
+            );
+          }
+          changeLocation = false;
+        }
+
+        if (isRestMode) {
+          for (let i = particles.length - 1; i >= 0; i--) {
+            if (random(1) < 0.001) {
+              blendMode(BURN);
+            } else {
+              blendMode(ADD);
+            }
+            const p = particles[i];
+            p.update(restartSoon);
+            p.show();
+            if (p.isDead()) {
+              particles.splice(i, 1);
+            }
+          }
+          blendMode(BLEND);
+          let scale = min(
+            windowWidth / maskImg.width,
+            windowHeight / maskImg.height
+          );
+          let imgW = maskImg.width * scale;
+          let imgH = maskImg.height * scale;
+          let x = (windowWidth - imgW) / 2;
+          let y = (windowHeight - imgH) / 2;
+
+          image(maskImg, x, y, imgW, imgH);
+          push();
+          fill(0, 0, 0);
+          rect(0, 0, (windowWidth - imgW) / 2, windowHeight);
+          rect(
+            (windowWidth + imgW) / 2,
+            0,
+            (windowWidth + imgW) / 2,
+            windowHeight
+          );
+          pop();
+          return;
+        }
 
         // 啟用加色 (ADD) 混合模式，增強光暈
-        blendMode(ADD);
 
         if (frameCount % 600 === 0) {
           colorIndex = (colorIndex + 1) % lightColors.length;

@@ -3,8 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <title>Solar Wind Archive｜太陽風記憶體</title>
-    <script src="./p5.min.js"></script>
-    <script src="./p5.sound.js"></script>
+    <script defer src="./p5.min.js"></script>
+    <!-- <script defer src="./p5.sound.js"></script> -->
+    <script defer src="./tone.js"></script>
+    <script defer src="./soundtest.js"></script>
     <style>
       html,
       body {
@@ -74,6 +76,7 @@
         maskImg = convertToGrayscale(maskImg);
         startTime = millis(); // record when program starts
         // maskImg.resize(windowWidth, windowHeight);
+        startMusic();
       }
 
       function draw() {

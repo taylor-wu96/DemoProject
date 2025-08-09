@@ -40,24 +40,21 @@
       let sunPos;
       let maskImg;
       function preload() {
-        maskImg = loadImage("sample2.png"); // 彩色輪廓圖
+        maskImg = loadImage("t03.png"); // 彩色輪廓圖
         // textureImg = loadImage("texture.jpg"); // 質感圖
       }
       function setup() {
         createCanvas(windowWidth, windowHeight);
         // 設定光源位置（可自行調整）
-        sunPos = createVector(width * 1, height * 0);
+        sunPos = createVector(width * 0.5, height * 0.5);
         noStroke();
         maskImg = convertToGrayscale(maskImg);
         // maskImg.resize(windowWidth, windowHeight);
       }
 
       function draw() {
-        image(
-          maskImg,
-          (windowWidth - maskImg.width) / 2,
-          (windowHeight - maskImg.height) / 2
-        );
+        // background(20, 20, 30, 25);
+
         // 半透明深色背景，保留上一幀的光跡
         // background(20, 20, 30, 25);
 
@@ -65,22 +62,51 @@
         blendMode(ADD);
 
         // 每幀產生少量新粒子
-        for (let i = 0; i < 100; i++) {
-          particles.push(new SunParticle());
-        }
-
-        // 更新並繪製
-        for (let i = particles.length - 1; i >= 0; i--) {
-          const p = particles[i];
-          p.update();
-          p.show();
-          if (p.isDead()) {
-            particles.splice(i, 1);
+        if (frameCount > 60 * 10) {
+          let counts = frameCount - 60 * 10;
+          // let counts = 5000;
+          let genParticles = min(counts / 10 + 1, 80);
+          for (let i = 0; i < genParticles; i++) {
+            particles.push(new SunParticle());
+          }
+          // 更新並繪製
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.update();
+            p.show();
+            if (p.isDead()) {
+              particles.splice(i, 1);
+            }
           }
         }
 
         // 回到預設混合模式
         blendMode(BLEND);
+        let scale = min(
+          windowWidth / maskImg.width,
+          windowHeight / maskImg.height
+        );
+        let imgW = maskImg.width * scale;
+        let imgH = maskImg.height * scale;
+        let x = (windowWidth - imgW) / 2;
+        let y = (windowHeight - imgH) / 2;
+
+        image(maskImg, x, y, imgW, imgH);
+        push();
+        fill(0, 0, 0);
+        rect(0, 0, (windowWidth - imgW) / 2, windowHeight);
+        rect(
+          (windowWidth + imgW) / 2,
+          0,
+          (windowWidth + imgW) / 2,
+          windowHeight
+        );
+        pop();
+        // image(
+        //   (4 * maskImg) / 5,
+        //   (windowWidth - maskImg.width) / 2,
+        //   (windowHeight - maskImg.height) / 2
+        // );
       }
 
       // ------ 粒子類別 ------
@@ -90,12 +116,12 @@
           this.pos = sunPos.copy().add(random(-20, 20), random(-20, 20));
           // 大致往下斜右的角度，加上一點隨機範圍
           const baseAngle = PI * 0.7;
-          this.angle = random(baseAngle - 0.2 * PI, baseAngle + 0.2 * PI);
-          this.speed = random(2, 20);
+          this.angle = random(baseAngle - PI, baseAngle + PI);
+          this.speed = random(0.25, 1);
           this.vel = p5.Vector.fromAngle(this.angle).mult(this.speed);
-          this.lifespan = random(200, 600);
+          this.lifespan = random(200, 800);
           this.size = random(0.1, 2);
-          this.noiseOffset = random(5000);
+          this.noiseOffset = random(100);
         }
 
         update() {
@@ -133,10 +159,11 @@
 
           // 對比增強：加深白黑差異
           // brightness = brightness > 128 ? 0 : 255;
-          grayImg.pixels[i] = brightness / 6;
-          grayImg.pixels[i + 1] = brightness / 6;
-          grayImg.pixels[i + 2] = brightness / 6;
-          grayImg.pixels[i + 3] = 255 - brightness;
+          let minBrightness = max(200 - brightness, 0);
+          grayImg.pixels[i] = (brightness + 0.6 * r) / 6;
+          grayImg.pixels[i + 1] = (brightness + 0.6 * g) / 6;
+          grayImg.pixels[i + 2] = (brightness + 0.6 * b) / 6;
+          grayImg.pixels[i + 3] = map(minBrightness, 0, 200, 2, 255);
         }
 
         grayImg.updatePixels();

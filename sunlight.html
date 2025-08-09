@@ -37,8 +37,11 @@
   <body>
     <script>
       let particles = [];
-      let sunPos;
+      let sunPos = [];
       let maskImg;
+      let lightColors = [];
+      let colorIndex = 0;
+      let restartSoon = false;
       function preload() {
         maskImg = loadImage("t03.png"); // 彩色輪廓圖
         // textureImg = loadImage("texture.jpg"); // 質感圖
@@ -46,7 +49,20 @@
       function setup() {
         createCanvas(windowWidth, windowHeight);
         // 設定光源位置（可自行調整）
-        sunPos = createVector(width * 0.5, height * 0.5);
+        for (let i = 0; i < 10; i++) {
+          sunPos.push(
+            createVector(width * random(0.2, 0.8), height * random(0.2, 0.8))
+          );
+        }
+        lightColors = [
+          color(0, 80, 100), // deep red glow
+          color(30, 90, 100), // orange-yellow dust
+          color(60, 60, 100), // yellow-white sunlight
+          color(120, 50, 80), // green plasma
+          color(200, 70, 90), // cyan oxygen glow
+          color(280, 60, 100), // purple ionized gas
+          color(320, 70, 90), // magenta cosmic rays
+        ];
         noStroke();
         maskImg = convertToGrayscale(maskImg);
         // maskImg.resize(windowWidth, windowHeight);
@@ -61,6 +77,11 @@
         // 啟用加色 (ADD) 混合模式，增強光暈
         blendMode(ADD);
 
+        if (frameCount % 600 === 0) {
+          colorIndex = (colorIndex + 1) % lightColors.length;
+          console.log(colorIndex);
+        }
+
         // 每幀產生少量新粒子
         if (frameCount > 60 * 10) {
           let counts = frameCount - 60 * 10;
@@ -72,11 +93,17 @@
           // 更新並繪製
           for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
-            p.update();
+            p.update(restartSoon);
             p.show();
             if (p.isDead()) {
               particles.splice(i, 1);
             }
+          }
+          if (random(1) < 0.001) {
+            restartSoon = true;
+            // particles = [];
+          } else {
+            restartSoon = false;
           }
         }
 
@@ -113,30 +140,42 @@
       class SunParticle {
         constructor() {
           // 從光源附近隨機一點產生
-          this.pos = sunPos.copy().add(random(-20, 20), random(-20, 20));
+          this.pos = sunPos[floor(random(0, sunPos.length))]
+            .copy()
+            .add(random(-20, 20), random(-20, 20));
           // 大致往下斜右的角度，加上一點隨機範圍
           const baseAngle = PI * 0.7;
           this.angle = random(baseAngle - PI, baseAngle + PI);
-          this.speed = random(0.25, 1);
+          this.speed = random(0.05, 0.6);
           this.vel = p5.Vector.fromAngle(this.angle).mult(this.speed);
           this.lifespan = random(200, 800);
           this.size = random(0.1, 2);
           this.noiseOffset = random(100);
         }
 
-        update() {
+        update(isDeadSoon) {
           // 加入噪聲微抖
           const n = noise(this.noiseOffset, frameCount * 0.01) - 0.5;
-          this.vel.rotate(n * 0.1);
+          this.vel.rotate(n * random(0.01, 0.1));
           this.pos.add(this.vel);
-          this.lifespan--;
+          if (isDeadSoon && this.lifespan > 10 && random(1) < 0.5) {
+            this.lifespan = floor(random(10));
+          } else {
+            if (random(1) < 0.001) {
+              this.lifespan = 1;
+            }
+            this.lifespan--;
+          }
         }
 
         show() {
           // 生命結束時慢慢消失
           const alpha = map(this.lifespan, 0, 120, 0, 200);
-          fill(255, 230, 180, alpha);
+          push();
+          colorMode(HSB);
+          fill(lightColors[colorIndex], alpha);
           ellipse(this.pos.x, this.pos.y, this.size);
+          pop();
         }
 
         isDead() {

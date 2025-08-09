@@ -133,7 +133,7 @@
       const track1 = new Tone.Player({
         url: "./sound.mp3",
         loop: true,
-        volume: -3, // 初始音量 (dB)
+        volume: 2, // 初始音量 (dB)
       }).toDestination();
 
       document
@@ -149,14 +149,25 @@
             startBtn.disabled = true;
 
             await Tone.start();
-            // track1.start();
+
+            // === Master bus：統一處理底噪與子頻 ===
+            const masterBus = new Tone.Gain(1);
+            const lowCut = new Tone.Filter(45, "highpass"); // 去 45Hz 以下次聲
+            const masterEQ = new Tone.EQ3({ low: -6, mid: 0, high: -1 }); // 輕挖低頻、微收高頻嘶聲
+            const limiter = new Tone.Limiter(-3);
+            masterBus.chain(lowCut, masterEQ, limiter, Tone.Destination);
+
+            // 如需啟用外部音檔：改接 masterBus
+            track1.disconnect();
+            track1.connect(masterBus);
+            // track1.start(); // 如需播放再打開
 
             // ===== 1. 深層基底音 - 大地的呼吸 =====
             const deepBass = new Tone.Oscillator(32, "sine").start();
-            const bassGain = new Tone.Gain(0.08);
+            const bassGain = new Tone.Gain(0.06); // 降低一點更乾淨
             const bassFilter = new Tone.Filter(80, "lowpass");
             deepBass.chain(bassFilter, bassGain);
-            bassGain.toDestination();
+            bassGain.connect(masterBus);
 
             // 基底音的緩慢調制
             const bassLFO = new Tone.LFO(0.01, 28, 36);
@@ -166,24 +177,26 @@
             // ===== 2. 風聲層次 - 多層次的氣流 =====
             // 遠方風聲
             const distantWind = new Tone.Noise("brown").start();
-            const distantWindGain = new Tone.Gain(0.03);
+            const distantWindGain = new Tone.Gain(0.022); // 微降
+            const distantHP = new Tone.Filter(50, "highpass"); // 去除超低頻轟鳴
             const distantWindFilter = new Tone.Filter(400, "lowpass");
-            distantWind.chain(distantWindFilter, distantWindGain);
-            distantWindGain.toDestination();
+            distantWind.chain(distantHP, distantWindFilter, distantWindGain);
+            distantWindGain.connect(masterBus);
 
             // 近處風聲
             const closeWind = new Tone.Noise("pink").start();
-            const closeWindGain = new Tone.Gain(0.02);
+            const closeWindGain = new Tone.Gain(0.012); // 微降
+            const closeHP = new Tone.Filter(100, "highpass");
             const closeWindFilter = new Tone.Filter(1200, "lowpass");
-            closeWind.chain(closeWindFilter, closeWindGain);
-            closeWindGain.toDestination();
+            closeWind.chain(closeHP, closeWindFilter, closeWindGain);
+            closeWindGain.connect(masterBus);
 
             // 風的調制
             const windLFO = new Tone.LFO(0.03, 0.01, 0.05);
             windLFO.connect(distantWindGain.gain);
             windLFO.start();
 
-            // ===== 3. 和聲音墊 - Eno風格的緩慢變化 =====
+            // ===== 3. 和聲音墊 - 緩慢變化 =====
             const pad1 = new Tone.Synth({
               oscillator: { type: "sine" },
               envelope: { attack: 8, decay: 2, sustain: 0.8, release: 12 },
@@ -191,7 +204,8 @@
             const pad1Gain = new Tone.Gain(0.15);
             const pad1Reverb = new Tone.Reverb(15);
             pad1.chain(pad1Gain, pad1Reverb);
-            pad1Reverb.toDestination();
+            pad1Reverb.wet.value = 0.6;
+            pad1Reverb.connect(masterBus);
             synths.push(pad1);
 
             const pad2 = new Tone.Synth({
@@ -201,10 +215,11 @@
             const pad2Gain = new Tone.Gain(0.1);
             const pad2Reverb = new Tone.Reverb(20);
             pad2.chain(pad2Gain, pad2Reverb);
-            pad2Reverb.toDestination();
+            pad2Reverb.wet.value = 0.55;
+            pad2Reverb.connect(masterBus);
             synths.push(pad2);
 
-            // 音階：多利安調式，創造神秘感
+            // 音階：多利安調式
             const notes = [
               "D3",
               "E3",
@@ -228,7 +243,7 @@
                 setTimeout(() => {
                   if (isPlaying) {
                     const note = notes[noteIndex % notes.length];
-                    const duration = Math.random() * 15 + 10; // 10-25秒持續時間
+                    const duration = Math.random() * 15 + 10; // 10-25秒
 
                     if (Math.random() > 0.5) {
                       pad1.triggerAttackRelease(note, duration);
@@ -246,7 +261,6 @@
                 }, delay);
               }
 
-              // 開始和聲進行
               scheduleNote(3000, 0);
               scheduleNote(8000, 4);
               scheduleNote(15000, 2);
@@ -256,19 +270,19 @@
 
             // ===== 4. 高頻泛音 - 空氣中的微光 =====
             const shimmer = new Tone.Noise("white").start();
-            const shimmerGain = new Tone.Gain(0.008);
+            const shimmerGain = new Tone.Gain(0.005); // 關鍵：降低底噪
             const shimmerFilter = new Tone.Filter(8000, "highpass");
             const shimmerFilter2 = new Tone.Filter(12000, "lowpass");
             shimmer.chain(shimmerFilter, shimmerFilter2, shimmerGain);
-            shimmerGain.toDestination();
+            shimmerGain.connect(masterBus);
 
             // 閃爍效果
             function createShimmerEffect() {
               if (isPlaying) {
-                shimmerGain.gain.linearRampTo(0.02, Math.random() * 2 + 1);
+                shimmerGain.gain.linearRampTo(0.015, Math.random() * 2 + 1);
                 setTimeout(() => {
                   if (isPlaying) {
-                    shimmerGain.gain.linearRampTo(0.008, Math.random() * 3 + 2);
+                    shimmerGain.gain.linearRampTo(0.005, Math.random() * 3 + 2);
                     setTimeout(
                       createShimmerEffect,
                       Math.random() * 5000 + 3000
@@ -287,7 +301,8 @@
             const bellGain = new Tone.Gain(0.05);
             const bellReverb = new Tone.Reverb(12);
             bellSynth.chain(bellGain, bellReverb);
-            bellReverb.toDestination();
+            bellReverb.wet.value = 0.5;
+            bellReverb.connect(masterBus);
 
             function occasionalBell() {
               if (isPlaying) {
@@ -296,13 +311,12 @@
                   highNotes[Math.floor(Math.random() * highNotes.length)];
                 bellSynth.triggerAttackRelease(note, "2n");
 
-                // 下次響起的時間：30秒到2分鐘之間
+                // 下次響起：30秒到2分鐘
                 const nextTime = Math.random() * 90000 + 30000;
                 setTimeout(occasionalBell, nextTime);
               }
             }
 
-            // 第一次響起延遲較長
             setTimeout(occasionalBell, Math.random() * 45000 + 30000);
 
             isPlaying = true;
@@ -316,7 +330,6 @@
             startBtn.disabled = false;
           }
         });
-
       // 頁面關閉時清理
       window.addEventListener("beforeunload", () => {
         isPlaying = false;
